@@ -38,28 +38,26 @@ client = pymongo.MongoClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db[COLLECTION_NAME]
 
-def scan_qr_with_opencv():
-    stframe = st.empty()
-    qr_detector = cv2.QRCodeDetector()
-    cap = cv2.VideoCapture(2)  # Captures from default webcam
-    scanned_data = None
-    timeout = time.time() + 10  # 10-second timeout
+def scan_qr_from_camera():
+    image_data = st.camera_input("Take a photo of the QR code")
+    if image_data is not None:
+        image = Image.open(image_data)
+        qr_data = detect_qr_from_image(image)
+        return qr_data
+    return None
 
-    while time.time() < timeout:
-        ret, frame = cap.read()
-        if not ret:
-            continue
-
-        data, bbox, _ = qr_detector.detectAndDecode(frame)
-        if data:
-            scanned_data = data
-            break
-
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        stframe.image(frame_rgb, channels="RGB", caption="Scanning QR Code...")
-
-    cap.release()
-    return scanned_data
+# Inside your QR scanning section
+if scan_method == "📷 Webcam" and not st.session_state.qr_scanned:
+    scanned_qr = scan_qr_from_camera()
+    if scanned_qr:
+        try:
+            st.session_state.rm_details = json.loads(scanned_qr)
+            st.session_state.qr_scanned = True
+            st.success("✅ Scan successful! RM details loaded.")
+        except Exception as e:
+            st.error(f"❌ Failed to parse QR: {e}")
+    else:
+        st.info("📷 Please take a photo of the QR code above to scan.")
 
 
 def detect_qr_from_image(image):
