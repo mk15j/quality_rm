@@ -1,4 +1,5 @@
 import streamlit as st
+import pymongo
 import pandas as pd
 from datetime import datetime
 import uuid
@@ -8,22 +9,29 @@ import numpy as np
 import tempfile
 import time
 import json
-import pymongo
+from streamlit_qrcode_scanner import qrcode_scanner
+from dotenv import load_dotenv
+from pymongo import MongoClient
 
-
-
-# Load MongoDB URI from Streamlit Secrets
-MONGO_URI = st.secrets["MONGO_URI"]
+# Load environment variables
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
 
 if not MONGO_URI:
-    st.error("MongoDB connection string not found! Check your Streamlit Secrets.")
+    st.error("MongoDB connection string not found! Check your .env file.")
     st.stop()
 
 # MongoDB Connection
-client = pymongo.MongoClient(MONGO_URI)
-db = client["quality"]
-collection = db["samples"]
+client = MongoClient(MONGO_URI)
 
+# # MongoDB Configuration
+
+DB_NAME = "quality"
+COLLECTION_NAME = "samples"
+
+client = pymongo.MongoClient(MONGO_URI)
+db = client[DB_NAME]
+collection = db[COLLECTION_NAME]
 
 def scan_qr_with_opencv():
     stframe = st.empty()
@@ -58,57 +66,55 @@ def detect_qr_from_image(image):
     return data
 
 
-st.set_page_config(page_title="QR Scan", layout="centered")
-st.title("📦 RM QR Code Scanner (Image Upload)")
+st.subheader("Scan QR Code for RM Inward Details")
 
-# Session state to track scan
 if "qr_scanned" not in st.session_state:
     st.session_state.qr_scanned = False
 if "rm_details" not in st.session_state:
     st.session_state.rm_details = {}
 
-# Upload image
-uploaded_image = st.file_uploader("Upload a QR Code Image", type=["jpg", "jpeg", "png"])
+option = st.radio("Choose QR Input Method", ["📷 Webcam", "🖼️ Upload Image"])
 
-if uploaded_image and not st.session_state.qr_scanned:
-    image = Image.open(uploaded_image).convert("RGB")
-    img_array = np.array(image)
-    img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+# Webcam QR Scanner
+if option == "📷 Webcam" and not st.session_state.qr_scanned:
+    if st.button("Start Scanning"):
+        scanned_qr = scan_qr_with_opencv()
+        if scanned_qr:
+            try:
+                st.session_state.rm_details = json.loads(scanned_qr)
+                st.session_state.qr_scanned = True
+                st.success("✅ Scan successful! RM details loaded.")
+            except Exception as e:
+                st.error(f"❌ Failed to parse QR: {e}")
+        else:
+            st.warning("⏱️ QR Code not detected. Try again.")
 
-    # OpenCV QRCode detection
-    qr_detector = cv2.QRCodeDetector()
-    data, bbox, _ = qr_detector.detectAndDecode(img_bgr)
+# Image Upload QR Scanner
+elif option == "🖼️ Upload Image" and not st.session_state.qr_scanned:
+    uploaded_file = st.file_uploader("Upload QR Code Image", type=["png", "jpg", "jpeg"])
+    if uploaded_file:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Image", use_container_width=True)
+        qr_data = detect_qr_from_image(image)
+        if qr_data:
+            try:
+                st.session_state.rm_details = json.loads(qr_data)
+                st.session_state.qr_scanned = True
+                st.success("✅ Scan successful! RM details loaded.")
+            except Exception as e:
+                st.error(f"❌ Failed to parse QR: {e}")
+        else:
+            st.warning("❌ No QR Code detected in the image.")
 
-    if data:
-        try:
-            rm_data = json.loads(data)
-            st.session_state.rm_details = rm_data
-            st.session_state.qr_scanned = True
-            st.success("✅ QR Code scanned successfully!")
-        except Exception as e:
-            st.error(f"❌ Failed to parse QR code content: {e}")
-    else:
-        st.warning("⚠️ No QR code detected in the uploaded image.")
-
-# Thumbnail image display
-if uploaded_image and st.session_state.qr_scanned:
-    st.image(uploaded_image, width=100, caption="📷 Scanned QR")
-
-# Show scanned fields
+# After scan
 if st.session_state.qr_scanned:
-    st.markdown("### 🧾 Scanned RM Details:")
-    details = st.session_state.rm_details
-
-    st.write(f"**RM LOT ID**: {details.get('rm_lot_id', '')}")
-    st.write(f"**Date**: {details.get('date', '')}")
-    st.write(f"**Supplier**: {details.get('supplier', '')}")
-    st.write(f"**Spec Size**: {details.get('spec_size', '')}")
-    st.write(f"**RM Quality**: {details.get('quality', '')}")
-
+    st.success("✅ Scan completed. Fields are auto-filled below.")
     if st.button("🔄 Rescan"):
         st.session_state.qr_scanned = False
         st.session_state.rm_details = {}
         st.rerun()
+
+
 # Show and allow editing of scanned RM details
 rm_details = st.session_state.rm_details
 rm_lot_id = st.text_input("RM LOT ID", value=rm_details.get("rm_lot_id", ""))
