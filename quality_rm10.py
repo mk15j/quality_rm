@@ -9,6 +9,8 @@ import numpy as np
 import tempfile
 import time
 import json
+import io
+from openpyxl import Workbook
 
 
 from pymongo import MongoClient
@@ -252,39 +254,57 @@ if st.session_state.get("show_modal", False):
 #     else:
 #         st.error("No data available for download.")
 
-# 📋 Sidebar - Filter and Download RM Quality Report
-with st.sidebar.expander("📁 Download RM Report by RM LOT ID & Date", expanded=True):
-    st.markdown("### 📄 Generate Filtered Report")
+# 📊 Sidebar - RM Quality Report Generator (Excel Format)
+with st.sidebar.expander("📁 Generate RM Report (Excel)", expanded=True):
+    st.markdown("### 📄 Download RM Quality Report by RM LOT ID & Date")
 
-    rm_lot_input = st.text_input("🔍 Enter RM LOT ID (e.g. LOT123)", key="filter_rmlot")
-    date_input = st.date_input("📅 Select Date", key="filter_date")
+    rm_lot_input = st.text_input("🔍 RM LOT ID", key="excel_filter_rmlot")
+    date_input = st.date_input("📅 Date", key="excel_filter_date")
 
-    if st.button("🔍 Search Records", key="filter_search"):
+    if st.button("📥 Generate Excel Report", key="generate_excel"):
         if not rm_lot_input or not date_input:
-            st.warning("⚠️ Please enter both RM LOT ID and Date.")
+            st.warning("⚠️ Please provide both RM LOT ID and Date.")
         else:
             date_iso = date_input.isoformat()
-            query = {
-                "rm_lot_id": rm_lot_input,
-                "rm_date": date_iso
-            }
-            filtered_data = list(collection.find(query, {"_id": 0}))
+            query = {"rm_lot_id": rm_lot_input, "rm_date": date_iso}
+            records = list(collection.find(query, {"_id": 0}))
 
-            if filtered_data:
-                st.success(f"✅ Found {len(filtered_data)} matching records.")
-
-                df = pd.DataFrame(filtered_data)
-                st.write("### 🧾 Filtered Report")
-                st.dataframe(df, use_container_width=True)
-
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="⬇️ Download Filtered CSV",
-                    data=csv,
-                    file_name=f"rm_report_{rm_lot_input}_{date_iso}.csv",
-                    mime="text/csv",
-                    key="download_filtered_csv"
-                )
+            if not records:
+                st.error("❌ No records found for this RM LOT ID and Date.")
             else:
-                st.error("❌ No records found for the given RM LOT ID and Date.")
+                # Prepare Excel workbook
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "RM Quality Report"
 
+                # Header
+                headers = ["Sample ID", "RM LOT ID", "Date", "Grid Set", "Sample No"] + field_names
+                ws.append(headers)
+
+                # Fill rows
+                for rec in records:
+                    sample_id = rec.get("sample_id", "")
+                    lot_id = rec.get("rm_lot_id", "")
+                    date = rec.get("rm_date", "")
+                    for sample in rec.get("marked_samples", []):
+                        grid_set = sample.get("grid_set", "")
+                        sample_num = sample.get("sample_number", "")
+                        marked = sample.get("marked_fields", [])
+
+                        row = [sample_id, lot_id, date, grid_set, sample_num]
+                        for field in field_names:
+                            row.append("✔" if field in marked else "")
+                        ws.append(row)
+
+                # Save to BytesIO
+                excel_buffer = io.BytesIO()
+                wb.save(excel_buffer)
+                excel_buffer.seek(0)
+
+                st.success(f"✅ Excel report ready with {len(records)} record(s).")
+                st.download_button(
+                    label="⬇️ Download Excel Report",
+                    data=excel_buffer,
+                    file_name=f"RM_Quality_Report_{rm_lot_input}_{date_iso}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
