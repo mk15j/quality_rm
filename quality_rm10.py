@@ -1,5 +1,4 @@
 import streamlit as st
-import pymongo
 import pandas as pd
 from datetime import datetime
 import uuid
@@ -9,6 +8,9 @@ import numpy as np
 import tempfile
 import time
 import json
+import pymongo
+
+
 
 # Load MongoDB URI from Streamlit Secrets
 MONGO_URI = st.secrets["MONGO_URI"]
@@ -18,7 +20,7 @@ if not MONGO_URI:
     st.stop()
 
 # MongoDB Connection
-client = MongoClient(MONGO_URI)
+client = pymongo.MongoClient(MONGO_URI)
 db = client["quality"]
 collection = db["samples"]
 
