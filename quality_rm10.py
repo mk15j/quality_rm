@@ -38,6 +38,26 @@ client = pymongo.MongoClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db[COLLECTION_NAME]
 
+
+
+
+def detect_qr_from_image(image):
+    qr_detector = cv2.QRCodeDetector()
+    img = np.array(image.convert('RGB'))
+    img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    data, bbox, _ = qr_detector.detectAndDecode(img_cv)
+    return data
+
+
+st.subheader("Scan QR Code for RM Inward Details")
+
+if "qr_scanned" not in st.session_state:
+    st.session_state.qr_scanned = False
+if "rm_details" not in st.session_state:
+    st.session_state.rm_details = {}
+
+scan_method = st.radio("Choose QR Input Method", ["📷 Webcam", "🖼️ Upload Image"])
+
 def scan_qr_from_camera():
     image_data = st.camera_input("Take a photo of the QR code")
     if image_data is not None:
@@ -58,37 +78,6 @@ if scan_method == "📷 Webcam" and not st.session_state.qr_scanned:
             st.error(f"❌ Failed to parse QR: {e}")
     else:
         st.info("📷 Please take a photo of the QR code above to scan.")
-
-
-def detect_qr_from_image(image):
-    qr_detector = cv2.QRCodeDetector()
-    img = np.array(image.convert('RGB'))
-    img_cv = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    data, bbox, _ = qr_detector.detectAndDecode(img_cv)
-    return data
-
-
-st.subheader("Scan QR Code for RM Inward Details")
-
-if "qr_scanned" not in st.session_state:
-    st.session_state.qr_scanned = False
-if "rm_details" not in st.session_state:
-    st.session_state.rm_details = {}
-
-scan_method = st.radio("Choose QR Input Method", ["📷 Webcam", "🖼️ Upload Image"])
-
-if scan_method == "📷 Webcam" and not st.session_state.qr_scanned:
-    if st.button("Start Webcam Scan"):
-        scanned_qr = scan_qr_with_opencv()
-        if scanned_qr:
-            try:
-                st.session_state.rm_details = json.loads(scanned_qr)
-                st.session_state.qr_scanned = True
-                st.success("✅ Scan successful! RM details loaded.")
-            except Exception as e:
-                st.error(f"❌ Failed to parse QR: {e}")
-        else:
-            st.warning("⚠️ QR Code not detected. Try again or upload an image.")
 
 elif scan_method == "🖼️ Upload Image" and not st.session_state.qr_scanned:
     uploaded_file = st.file_uploader("Upload QR Code Image", type=["png", "jpg", "jpeg"])
