@@ -236,21 +236,21 @@ if st.session_state.get("show_modal", False):
             st.session_state["show_modal"] = False
             st.rerun()
 
-# Download Submitted Data
-st.subheader("Download Submitted Samples Report")
-if st.button("Generate Report"):
-    all_data = list(collection.find({}, {"_id": 0}))
-    if all_data:
-        df = pd.DataFrame(all_data)
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name="submitted_samples_report.csv",
-            mime="text/csv"
-        )
-    else:
-        st.error("No data available for download.")
+# # Download Submitted Data
+# st.subheader("Download Submitted Samples Report")
+# if st.button("Generate Report"):
+#     all_data = list(collection.find({}, {"_id": 0}))
+#     if all_data:
+#         df = pd.DataFrame(all_data)
+#         csv = df.to_csv(index=False).encode('utf-8')
+#         st.download_button(
+#             label="Download CSV",
+#             data=csv,
+#             file_name="submitted_samples_report.csv",
+#             mime="text/csv"
+#         )
+#     else:
+#         st.error("No data available for download.")
 
 # 📋 Sidebar - Filter and Download RM Quality Report
 with st.sidebar.expander("📁 Download RM Report by RM LOT ID & Date", expanded=True):
