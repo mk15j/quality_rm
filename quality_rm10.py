@@ -251,3 +251,40 @@ if st.button("Generate Report"):
         )
     else:
         st.error("No data available for download.")
+
+# 📋 Sidebar - Filter and Download RM Quality Report
+with st.sidebar.expander("📁 Download RM Report by RM LOT ID & Date", expanded=True):
+    st.markdown("### 📄 Generate Filtered Report")
+
+    rm_lot_input = st.text_input("🔍 Enter RM LOT ID (e.g. LOT123)", key="filter_rmlot")
+    date_input = st.date_input("📅 Select Date", key="filter_date")
+
+    if st.button("🔍 Search Records", key="filter_search"):
+        if not rm_lot_input or not date_input:
+            st.warning("⚠️ Please enter both RM LOT ID and Date.")
+        else:
+            date_iso = date_input.isoformat()
+            query = {
+                "rm_lot_id": rm_lot_input,
+                "rm_date": date_iso
+            }
+            filtered_data = list(collection.find(query, {"_id": 0}))
+
+            if filtered_data:
+                st.success(f"✅ Found {len(filtered_data)} matching records.")
+
+                df = pd.DataFrame(filtered_data)
+                st.write("### 🧾 Filtered Report")
+                st.dataframe(df, use_container_width=True)
+
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="⬇️ Download Filtered CSV",
+                    data=csv,
+                    file_name=f"rm_report_{rm_lot_input}_{date_iso}.csv",
+                    mime="text/csv",
+                    key="download_filtered_csv"
+                )
+            else:
+                st.error("❌ No records found for the given RM LOT ID and Date.")
+
