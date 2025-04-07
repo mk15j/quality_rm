@@ -9,7 +9,7 @@ import numpy as np
 import tempfile
 import time
 import json
-from streamlit_qrcode_scanner import qrcode_scanner
+
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
