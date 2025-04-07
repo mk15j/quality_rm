@@ -2,3 +2,4 @@ streamlit
 pymongo
 pandas
 opencv-python-headless
+openpyxl
