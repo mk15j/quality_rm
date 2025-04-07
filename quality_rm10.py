@@ -80,44 +80,83 @@ if "rm_details" not in st.session_state:
 
 option = st.radio("Choose QR Input Method", ["📷 Webcam", "🖼️ Upload Image"])
 
-# Webcam QR Scanner
-if option == "📷 Webcam" and not st.session_state.qr_scanned:
-    if st.button("Start Scanning"):
-        scanned_qr = scan_qr_with_opencv()
-        if scanned_qr:
-            try:
-                st.session_state.rm_details = json.loads(scanned_qr)
-                st.session_state.qr_scanned = True
-                st.success("✅ Scan successful! RM details loaded.")
-            except Exception as e:
-                st.error(f"❌ Failed to parse QR: {e}")
-        else:
-            st.warning("⏱️ QR Code not detected. Try again.")
+# # Webcam QR Scanner
+# if option == "📷 Webcam" and not st.session_state.qr_scanned:
+#     if st.button("Start Scanning"):
+#         scanned_qr = scan_qr_with_opencv()
+#         if scanned_qr:
+#             try:
+#                 st.session_state.rm_details = json.loads(scanned_qr)
+#                 st.session_state.qr_scanned = True
+#                 st.success("✅ Scan successful! RM details loaded.")
+#             except Exception as e:
+#                 st.error(f"❌ Failed to parse QR: {e}")
+#         else:
+#             st.warning("⏱️ QR Code not detected. Try again.")
 
-# Image Upload QR Scanner
-elif option == "🖼️ Upload Image" and not st.session_state.qr_scanned:
-    uploaded_file = st.file_uploader("Upload QR Code Image", type=["png", "jpg", "jpeg"])
-    if uploaded_file:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
-        qr_data = detect_qr_from_image(image)
-        if qr_data:
-            try:
-                st.session_state.rm_details = json.loads(qr_data)
-                st.session_state.qr_scanned = True
-                st.success("✅ Scan successful! RM details loaded.")
-            except Exception as e:
-                st.error(f"❌ Failed to parse QR: {e}")
-        else:
-            st.warning("❌ No QR Code detected in the image.")
+# # Image Upload QR Scanner
+# elif option == "🖼️ Upload Image" and not st.session_state.qr_scanned:
+#     uploaded_file = st.file_uploader("Upload QR Code Image", type=["png", "jpg", "jpeg"])
+#     if uploaded_file:
+#         image = Image.open(uploaded_file)
+#         st.image(image, caption="Uploaded Image", use_container_width=True)
+#         qr_data = detect_qr_from_image(image)
+#         if qr_data:
+#             try:
+#                 st.session_state.rm_details = json.loads(qr_data)
+#                 st.session_state.qr_scanned = True
+#                 st.success("✅ Scan successful! RM details loaded.")
+#             except Exception as e:
+#                 st.error(f"❌ Failed to parse QR: {e}")
+#         else:
+#             st.warning("❌ No QR Code detected in the image.")
 
-# After scan
-if st.session_state.qr_scanned:
-    st.success("✅ Scan completed. Fields are auto-filled below.")
-    if st.button("🔄 Rescan"):
-        st.session_state.qr_scanned = False
-        st.session_state.rm_details = {}
-        st.rerun()
+# # After scan
+# if st.session_state.qr_scanned:
+#     st.success("✅ Scan completed. Fields are auto-filled below.")
+#     if st.button("🔄 Rescan"):
+#         st.session_state.qr_scanned = False
+#         st.session_state.rm_details = {}
+#         st.rerun()
+# Option to scan via webcam or upload image
+scan_method = st.radio("Choose Scan Method", ["Webcam", "Upload Image"])
+
+if scan_method == "Webcam" and not st.session_state.qr_scanned:
+    if st.button("Start Webcam Scan"):
+        scanned_data = scan_qr_with_opencv()
+        if scanned_data:
+            try:
+                rm_data = json.loads(scanned_data)
+                st.session_state.rm_details = rm_data
+                st.session_state.qr_scanned = True
+                st.success("✅ QR Code scanned successfully!")
+            except Exception as e:
+                st.error(f"❌ Failed to parse QR code content: {e}")
+        else:
+            st.warning("⚠️ No QR code detected. Try again or use image upload.")
+
+elif scan_method == "Upload Image" and not st.session_state.qr_scanned:
+    uploaded_image = st.file_uploader("Upload a QR Code Image", type=["jpg", "jpeg", "png"])
+
+    if uploaded_image:
+        image = Image.open(uploaded_image).convert("RGB")
+        img_array = np.array(image)
+        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+
+        # OpenCV QRCode detection
+        qr_detector = cv2.QRCodeDetector()
+        data, bbox, _ = qr_detector.detectAndDecode(img_bgr)
+
+        if data:
+            try:
+                rm_data = json.loads(data)
+                st.session_state.rm_details = rm_data
+                st.session_state.qr_scanned = True
+                st.success("✅ QR Code scanned successfully!")
+            except Exception as e:
+                st.error(f"❌ Failed to parse QR code content: {e}")
+        else:
+            st.warning("⚠️ No QR code detected in the uploaded image.")
 
 
 # Show and allow editing of scanned RM details
