@@ -41,7 +41,7 @@ collection = db[COLLECTION_NAME]
 def scan_qr_with_opencv():
     stframe = st.empty()
     qr_detector = cv2.QRCodeDetector()
-    cap = cv2.VideoCapture(1)  # Captures from default webcam
+    cap = cv2.VideoCapture(2)  # Captures from default webcam
     scanned_data = None
     timeout = time.time() + 10  # 10-second timeout
 
